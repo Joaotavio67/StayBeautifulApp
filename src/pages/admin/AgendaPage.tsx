@@ -107,6 +107,37 @@ export default function AdminAgendaPage() {
     loadAppointments()
   }
 
+  async function handleReactivate(appt: AppointmentWithService) {
+    if (!confirm(`Reativar agendamento de ${appt.client_name}?`)) return
+
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .update({ status: 'confirmed' })
+        .eq('id', appt.id)
+
+      if (error) throw error
+
+      // Sync back to Google Calendar
+      if (appt.service) {
+        syncAppointmentToCalendar({
+          appointmentId: appt.id,
+          clientName: appt.client_name,
+          clientPhone: appt.client_phone,
+          serviceName: appt.service.name,
+          date: appt.appointment_date,
+          time: appt.appointment_time.slice(0, 5),
+          durationMinutes: appt.service.duration_minutes,
+        })
+      }
+
+      setToast('Agendamento reativado!')
+      loadAppointments()
+    } catch (err: any) {
+      alert(`Erro ao reativar: ${err?.message || 'Tente novamente.'}`)
+    }
+  }
+
   function copyCancelLink(token: string) {
     const url = `${window.location.origin}/cancelar/${token}`
     navigator.clipboard.writeText(url)
@@ -369,6 +400,16 @@ export default function AdminAgendaPage() {
                   onClick={() => handleCancel(appt.id)}
                 >
                   Cancelar
+                </button>
+              )}
+
+              {appt.status === 'cancelled' && (
+                <button
+                  className="btn btn--filled btn--sm"
+                  onClick={() => handleReactivate(appt)}
+                  title="Reativar este agendamento"
+                >
+                  ↺ Reativar
                 </button>
               )}
 
