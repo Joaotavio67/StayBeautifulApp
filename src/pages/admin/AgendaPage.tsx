@@ -85,7 +85,7 @@ export default function AdminAgendaPage() {
 
   useEffect(() => { loadAppointments(); loadSchedulingData() }, [])
 
-  async function handleMarkCompleted(id: string, clientPhone: string, clientName: string) {
+  async function handleMarkCompleted(id: string, _clientPhone: string, _clientName: string) {
     const { error } = await supabase
       .from('appointments')
       .update({ status: 'completed' })
@@ -93,14 +93,14 @@ export default function AdminAgendaPage() {
 
     if (!error) {
       setToast('Agendamento marcado como concluído! Movido para o Histórico.')
-      handleRequestReview(clientPhone, clientName)
+      handleRequestReview(_clientName)
       loadAppointments()
     } else {
       alert('Erro ao concluir agendamento.')
     }
   }
 
-  function handleRequestReview(clientPhone: string, clientName: string) {
+  function handleRequestReview(clientName: string) {
     const joycesPhone = '5511997361024'
     const googleMapsLink = 'https://g.page/r/CUA5DyGfibTEBM/review'
 
