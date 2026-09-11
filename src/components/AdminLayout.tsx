@@ -48,6 +48,14 @@ export default function AdminLayout() {
           ))}
         </nav>
         <div className="admin-sidebar__logout">
+          <a
+            href="/agendar"
+            className="btn btn--sm"
+            style={{ color: 'var(--color-text)', width: '100%', marginBottom: '0.5rem', textAlign: 'center', textDecoration: 'none' }}
+            title="Verificar agendamento na visão do cliente"
+          >
+            👁️ Ver Agendamento
+          </a>
           <button className="btn btn--ghost btn--sm" style={{ color: 'rgba(245,245,245,0.7)', width: '100%' }} onClick={handleLogout}>
             Sair
           </button>

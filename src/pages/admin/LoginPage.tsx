@@ -79,6 +79,22 @@ export default function AdminLoginPage() {
           </button>
         </form>
       </div>
+
+      <div style={{ marginTop: '2rem', textAlign: 'center' }}>
+        <Link
+          to="/agendar"
+          style={{
+            fontSize: '0.9rem',
+            color: 'var(--color-muted)',
+            textDecoration: 'none',
+            borderBottom: '1px solid var(--color-muted)',
+            display: 'inline-block'
+          }}
+          title="Voltar para a página de agendamento do cliente"
+        >
+          👁️ Ver página de agendamento do cliente
+        </Link>
+      </div>
     </div>
   )
 }
