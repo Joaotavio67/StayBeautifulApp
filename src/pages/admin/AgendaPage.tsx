@@ -290,8 +290,8 @@ export default function AdminAgendaPage() {
   }
 
   const now = new Date()
-  const weekStart = startOfWeek(now, { weekStartsOn: 1 })
-  const weekEnd = endOfWeek(now, { weekStartsOn: 1 })
+  const weekStart = startOfWeek(now, { weekStartsOn: 0 })
+  const weekEnd = endOfWeek(now, { weekStartsOn: 0 })
 
   // Agenda shows active/pending appointments (status === 'confirmed').
   // 'completed' items move to History, 'cancelled' shown only under 'all'
