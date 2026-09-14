@@ -103,7 +103,7 @@ export default function AdminAgendaPage() {
   function handleRequestReview(clientPhone: string, clientName: string) {
     const googleMapsLink = 'https://g.page/r/CUA5DyGfibTEBM/review'
 
-    const message = `Olá ${clientName}! 😊\n\nObrigada por escolher nosso serviço! Você gostaria de nos avaliar no Google Maps? Deixe uma avaliação com 5 ⭐, um comentário e, se possível, compartilhe fotos ou vídeos da sua experiência.\n\nLink para avaliar:\n${googleMapsLink}\n\nAgradecemos muito! 🙏`
+    const message = `Olá ${clientName}!\n\nObrigada por escolher nosso serviço! Você poderia nos avaliar no Google Maps? Deixe uma avaliação com 5 estrelas, um comentário e, se possível, compartilhe fotos ou vídeos da sua experiência.\n\nLink para avaliar:\n${googleMapsLink}\n\nAgradecemos muito!`
 
     const encodedMessage = encodeURIComponent(message)
     const whatsappUrl = `https://wa.me/${clientPhone}?text=${encodedMessage}`
