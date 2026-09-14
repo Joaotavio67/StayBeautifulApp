@@ -85,7 +85,7 @@ export default function AdminAgendaPage() {
 
   useEffect(() => { loadAppointments(); loadSchedulingData() }, [])
 
-  async function handleMarkCompleted(id: string, _clientPhone: string, _clientName: string) {
+  async function handleMarkCompleted(id: string, clientPhone: string, clientName: string) {
     const { error } = await supabase
       .from('appointments')
       .update({ status: 'completed' })
@@ -93,21 +93,20 @@ export default function AdminAgendaPage() {
 
     if (!error) {
       setToast('Agendamento marcado como concluído! Movido para o Histórico.')
-      handleRequestReview(_clientName)
+      handleRequestReview(clientPhone, clientName)
       loadAppointments()
     } else {
       alert('Erro ao concluir agendamento.')
     }
   }
 
-  function handleRequestReview(clientName: string) {
-    const joycesPhone = '5511997361024'
+  function handleRequestReview(clientPhone: string, clientName: string) {
     const googleMapsLink = 'https://g.page/r/CUA5DyGfibTEBM/review'
 
     const message = `Olá ${clientName}! 😊\n\nObrigada por escolher nosso serviço! Você gostaria de nos avaliar no Google Maps? Deixe uma avaliação com 5 ⭐, um comentário e, se possível, compartilhe fotos ou vídeos da sua experiência.\n\nLink para avaliar:\n${googleMapsLink}\n\nAgradecemos muito! 🙏`
 
     const encodedMessage = encodeURIComponent(message)
-    const whatsappUrl = `https://wa.me/${joycesPhone}?text=${encodedMessage}`
+    const whatsappUrl = `https://wa.me/${clientPhone}?text=${encodedMessage}`
 
     window.open(whatsappUrl, '_blank')
   }
