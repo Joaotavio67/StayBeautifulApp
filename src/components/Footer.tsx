@@ -10,7 +10,9 @@ export default function Footer() {
         <a href="/admin/login">Área Admin</a>
       </div>
       <div className="footer__copy">
-        Rua Carmo Vieira, 430 — Jardim Bom Jesus, Pirapora do Bom Jesus/SP
+        <a href="https://maps.google.com/?q=Rua+Carmo+Vieira+430+Jardim+Bom+Jesus+Pirapora+do+Bom+Jesus+SP" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px solid currentColor', cursor: 'pointer' }}>
+          Rua Carmo Vieira, 430 — Jardim Bom Jesus, Pirapora do Bom Jesus/SP
+        </a>
       </div>
     </footer>
   )

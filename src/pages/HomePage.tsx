@@ -143,7 +143,13 @@ export default function HomePage() {
             <div key={item.title} style={{ maxWidth: '220px' }}>
               <div style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>{item.icon}</div>
               <div style={{ fontFamily: 'var(--font-elegant)', fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', opacity: 0.7, marginBottom: '0.5rem' }}>{item.title}</div>
-              <div style={{ fontSize: '0.9rem', opacity: 0.9, whiteSpace: 'pre-line', lineHeight: '1.6', fontWeight: 300 }}>{item.body}</div>
+              {item.title === 'Localização' ? (
+                <a href="https://maps.google.com/?q=Rua+Carmo+Vieira+430+Jardim+Bom+Jesus+Pirapora+do+Bom+Jesus+SP" target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.9rem', opacity: 0.9, whiteSpace: 'pre-line', lineHeight: '1.6', fontWeight: 300, color: 'inherit', textDecoration: 'none', borderBottom: '1px solid currentColor', display: 'inline-block' }}>
+                  {item.body}
+                </a>
+              ) : (
+                <div style={{ fontSize: '0.9rem', opacity: 0.9, whiteSpace: 'pre-line', lineHeight: '1.6', fontWeight: 300 }}>{item.body}</div>
+              )}
             </div>
           ))}
         </div>
