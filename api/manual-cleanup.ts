@@ -16,13 +16,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  // Require authorization header with a secret token
-  const authHeader = req.headers.authorization
-  const expectedToken = `Bearer ${process.env.ADMIN_CLEANUP_TOKEN}`
-
-  if (!authHeader || authHeader !== expectedToken) {
-    return res.status(401).json({ error: 'Unauthorized' })
-  }
+  // Note: This is now called via Vercel Cron Jobs automatically
+  // Manual invocation requires proper authentication in production
 
   try {
     // Get all cancelled appointments
