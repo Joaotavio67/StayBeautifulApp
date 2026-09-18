@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
 import DiamondDivider from '../components/DiamondDivider'
+import PaymentSuggestionModal from '../components/PaymentSuggestionModal'
 import { supabase } from '../lib/supabase'
 import type { Appointment, Service, Combo } from '../lib/supabase'
 import { formatPrice } from '../lib/utils'
@@ -27,6 +28,7 @@ export default function ConfirmationPage() {
 
   const [avisado, setAvisado] = useState(false)
   const [loadingAvisado, setLoadingAvisado] = useState(false)
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
 
   useEffect(() => {
     if (!state) return
@@ -55,6 +57,13 @@ export default function ConfirmationPage() {
       }
     }
     checkAvisado()
+  }, [state])
+
+  useEffect(() => {
+    if (!state) return
+    // Show payment modal after a brief delay (let the page render first)
+    const timer = setTimeout(() => setShowPaymentModal(true), 500)
+    return () => clearTimeout(timer)
   }, [state])
 
   if (!state) {
@@ -177,6 +186,18 @@ export default function ConfirmationPage() {
               <span>💬 Avisar a Joyce pelo WhatsApp</span>
             )}
           </button>
+
+          {state?.appointment && (
+            <PaymentSuggestionModal
+              appointment={state.appointment}
+              service={service}
+              dateFormatted={dateFormatted || ''}
+              time={time || ''}
+              isOpen={showPaymentModal}
+              onSkip={() => setShowPaymentModal(false)}
+              onPaymentSuccess={() => setShowPaymentModal(false)}
+            />
+          )}
 
           <DiamondDivider />
 
