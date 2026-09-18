@@ -64,22 +64,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Delete the old appointments
     const idsToDelete = appointmentsToDelete.map((a) => a.id)
 
-    const { error: deleteError, count } = await supabase
+    const { error: deleteError } = await supabase
       .from('appointments')
       .delete()
       .in('id', idsToDelete)
-      .select('*', { head: true, count: 'exact' })
 
     if (deleteError) {
       throw deleteError
     }
 
-    console.log(`Manual cleanup completed. Deleted ${count} cancelled appointments older than 7 days.`)
+    console.log(`Manual cleanup completed. Deleted ${idsToDelete.length} cancelled appointments older than 7 days.`)
 
     return res.status(200).json({
       success: true,
-      message: `Successfully deleted ${count} cancelled appointments older than 7 days`,
-      deleted: count,
+      message: `Successfully deleted ${idsToDelete.length} cancelled appointments older than 7 days`,
+      deleted: idsToDelete.length,
       appointmentIds: idsToDelete,
       cutoffDate: sevenDaysAgo.toISOString().split('T')[0],
       timestamp: new Date().toISOString(),
