@@ -157,12 +157,9 @@ export default function PaymentSuggestionModal({
             Pagar no salão
           </button>
           <button
-            className="btn btn--filled"
+            className="btn btn--filled btn--full"
             onClick={handlePayNow}
             disabled={isLoading}
-            style={{
-              backgroundColor: isLoading ? 'var(--color-disabled)' : 'var(--color-primary)',
-            }}
           >
             {isLoading ? 'Processando...' : '💳 Pagar agora'}
           </button>
