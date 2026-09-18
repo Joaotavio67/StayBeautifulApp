@@ -28,7 +28,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Get all cancelled appointments
     const { data: allAppointments, error: fetchError } = await supabase
       .from('appointments')
-      .select('id, created_at, updated_at, status')
+      .select('id, created_at, status')
       .eq('status', 'cancelled')
 
     if (fetchError) {
@@ -49,8 +49,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Find appointments older than 7 days
     const appointmentsToDelete = allAppointments.filter((appt) => {
-      const updatedDate = new Date(appt.updated_at || appt.created_at)
-      return updatedDate < sevenDaysAgo
+      const createdDate = new Date(appt.created_at)
+      return createdDate < sevenDaysAgo
     })
 
     if (appointmentsToDelete.length === 0) {
