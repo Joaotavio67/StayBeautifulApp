@@ -101,7 +101,7 @@ export default function AdminAgendaPage() {
   }
 
   function handleRequestReview(clientPhone: string, clientName: string) {
-    const googleMapsLink = 'https://g.page/r/CUA5DyGfibTEBM/review'
+    const googleMapsLink = 'https://g.page/r/CUA5DyGfibTEEBM/review'
 
     let message = `Olá ${clientName}!\n\n`
     message += `Obrigada por escolher nosso serviço! Você poderia nos avaliar no Google Maps? 🌟\n\n`
