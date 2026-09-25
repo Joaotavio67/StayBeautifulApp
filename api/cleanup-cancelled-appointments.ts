@@ -11,14 +11,9 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey)
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Vercel Crons always use GET and include a verification token
+  // Vercel Crons always use GET
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' })
-  }
-
-  // Verify the request is from Vercel Cron
-  if (req.headers['authorization'] !== `Bearer ${process.env.CRON_SECRET}`) {
-    return res.status(401).json({ error: 'Unauthorized' })
   }
 
   try {
