@@ -99,13 +99,18 @@ export default function ConfirmationPage() {
       }
       setAvisado(true)
     } catch (err) {
-      console.error(err)
-    } finally {
-      setLoadingAvisado(false)
+      console.error('Error updating whatsapp status:', err)
     }
 
-    // Open WhatsApp
-    window.open(waUrl, '_blank')
+    // Open WhatsApp - ensure waUrl exists
+    if (waUrl && waUrl.trim()) {
+      window.open(waUrl, '_blank')
+    } else {
+      console.error('WhatsApp URL not available')
+      alert('Erro ao abrir WhatsApp. Tente novamente.')
+    }
+
+    setLoadingAvisado(false)
   }
 
   return (
