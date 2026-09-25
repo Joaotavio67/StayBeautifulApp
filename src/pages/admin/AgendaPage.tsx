@@ -47,6 +47,7 @@ export default function AdminAgendaPage() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<TabId>('today')
   const [toast, setToast] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
 
   // Data needed for the manual booking form's date/time picker
   const [services, setServices] = useState<Service[]>([])
@@ -314,6 +315,11 @@ export default function AdminAgendaPage() {
     { id: 'all', label: 'Todos' },
   ]
 
+  const ITEMS_PER_PAGE = 5
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
+  const startIdx = (currentPage - 1) * ITEMS_PER_PAGE
+  const paginatedAppointments = filtered.slice(startIdx, startIdx + ITEMS_PER_PAGE)
+
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.5rem' }}>
@@ -331,7 +337,7 @@ export default function AdminAgendaPage() {
           <button
             key={t.id}
             className={`tab${tab === t.id ? ' tab--active' : ''}`}
-            onClick={() => setTab(t.id)}
+            onClick={() => { setTab(t.id); setCurrentPage(1) }}
           >
             {t.label}
           </button>
@@ -349,7 +355,13 @@ export default function AdminAgendaPage() {
         </div>
       )}
 
-      {filtered.map(appt => {
+      {filtered.length > 0 && totalPages > 1 && (
+        <div style={{ marginBottom: '1rem', fontSize: '0.85rem', color: 'var(--color-muted)' }}>
+          Página {currentPage} de {totalPages} · {filtered.length} total
+        </div>
+      )}
+
+      {paginatedAppointments.map(appt => {
         const isCombo = Boolean(appt.combo_group_id)
         const price = appt.price ?? appt.service?.price ?? 0
 
@@ -449,6 +461,25 @@ export default function AdminAgendaPage() {
           </div>
         )
       })}
+
+      {filtered.length > 0 && totalPages > 1 && (
+        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', marginTop: '2rem', marginBottom: '1rem' }}>
+          <button
+            className="btn btn--sm"
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+          >
+            ← Anterior
+          </button>
+          <button
+            className="btn btn--sm"
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+          >
+            Próxima →
+          </button>
+        </div>
+      )}
 
       {manualModalOpen && (
         <Modal title="Agendamento manual" onClose={() => setManualModalOpen(false)}>
