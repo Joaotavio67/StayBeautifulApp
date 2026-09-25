@@ -17,24 +17,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // Calculate date 7 days ago
+    // Calculate date 7 days ago (as ISO timestamp)
     const sevenDaysAgo = new Date()
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-    const cutoffDate = sevenDaysAgo.toISOString().split('T')[0] // YYYY-MM-DD format
+    const cutoffISODate = sevenDaysAgo.toISOString() // Full ISO string for proper timestamp comparison
 
     // Count cancelled appointments to be deleted
     const { count: deleteCount } = await supabase
       .from('appointments')
       .select('id', { count: 'exact', head: true })
       .eq('status', 'cancelled')
-      .lt('created_at', cutoffDate)
+      .lt('created_at', cutoffISODate)
 
     // Delete cancelled appointments older than 7 days
     const { error } = await supabase
       .from('appointments')
       .delete()
       .eq('status', 'cancelled')
-      .lt('created_at', cutoffDate)
+      .lt('created_at', cutoffISODate)
 
     if (error) {
       console.error('Supabase delete error:', error)
@@ -49,7 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({
       success: true,
       message: `Deleted ${deleteCount} cancelled appointments older than 7 days`,
-      cutoffDate: cutoffDate,
+      cutoffDate: cutoffISODate.split('T')[0],
       deleted: deleteCount,
       timestamp: new Date().toISOString(),
     })
