@@ -11,6 +11,7 @@ export default function AdminHistoryPage() {
   const [appointments, setAppointments] = useState<AppointmentWithService[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedMonthKey, setSelectedMonthKey] = useState<string>('')
+  const [currentPage, setCurrentPage] = useState(1)
 
   async function loadHistory() {
     const { data } = await supabase
@@ -63,6 +64,12 @@ export default function AdminHistoryPage() {
     return sum + Number(p)
   }, 0)
 
+  // Pagination
+  const ITEMS_PER_PAGE = 5
+  const totalPages = Math.ceil(monthAppointments.length / ITEMS_PER_PAGE)
+  const startIdx = (currentPage - 1) * ITEMS_PER_PAGE
+  const paginatedAppointments = monthAppointments.slice(startIdx, startIdx + ITEMS_PER_PAGE)
+
   return (
     <div>
       <div
@@ -93,7 +100,7 @@ export default function AdminHistoryPage() {
             className="input"
             style={{ width: 'auto', padding: '0.5rem 1rem' }}
             value={selectedMonthKey}
-            onChange={(e) => setSelectedMonthKey(e.target.value)}
+            onChange={(e) => { setSelectedMonthKey(e.target.value); setCurrentPage(1) }}
           >
             {availableMonths.map((mKey) => {
               const [y, m] = mKey.split('-').map(Number)
@@ -162,7 +169,13 @@ export default function AdminHistoryPage() {
         </div>
       )}
 
-      {monthAppointments.map((appt) => {
+      {monthAppointments.length > 0 && totalPages > 1 && (
+        <div style={{ marginBottom: '1rem', fontSize: '0.85rem', color: 'var(--color-muted)' }}>
+          Página {currentPage} de {totalPages} · {monthAppointments.length} total
+        </div>
+      )}
+
+      {paginatedAppointments.map((appt) => {
         const itemPrice = appt.price ?? appt.service?.price ?? 0
         const isCombo = Boolean(appt.combo_group_id)
 
@@ -202,6 +215,25 @@ export default function AdminHistoryPage() {
           </div>
         )
       })}
+
+      {monthAppointments.length > 0 && totalPages > 1 && (
+        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', marginTop: '2rem', marginBottom: '1rem' }}>
+          <button
+            className="btn btn--sm"
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+          >
+            ← Anterior
+          </button>
+          <button
+            className="btn btn--sm"
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+          >
+            Próxima →
+          </button>
+        </div>
+      )}
     </div>
   )
 }
