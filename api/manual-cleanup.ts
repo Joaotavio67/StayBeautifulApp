@@ -38,20 +38,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
 
-    // Calculate 7 days ago
-    const sevenDaysAgo = new Date()
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    // Calculate 3 days ago
+    const threeDaysAgo = new Date()
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
 
-    // Find appointments older than 7 days
+    // Find appointments older than 3 days
     const appointmentsToDelete = allAppointments.filter((appt) => {
       const createdDate = new Date(appt.created_at)
-      return createdDate < sevenDaysAgo
+      return createdDate < threeDaysAgo
     })
 
     if (appointmentsToDelete.length === 0) {
       return res.status(200).json({
         success: true,
-        message: 'No cancelled appointments older than 7 days found',
+        message: 'No cancelled appointments older than 3 days found',
         deleted: 0,
       })
     }
@@ -68,14 +68,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       throw deleteError
     }
 
-    console.log(`Manual cleanup completed. Deleted ${idsToDelete.length} cancelled appointments older than 7 days.`)
+    console.log(`Manual cleanup completed. Deleted ${idsToDelete.length} cancelled appointments older than 3 days.`)
 
     return res.status(200).json({
       success: true,
-      message: `Successfully deleted ${idsToDelete.length} cancelled appointments older than 7 days`,
+      message: `Successfully deleted ${idsToDelete.length} cancelled appointments older than 3 days`,
       deleted: idsToDelete.length,
       appointmentIds: idsToDelete,
-      cutoffDate: sevenDaysAgo.toISOString().split('T')[0],
+      cutoffDate: threeDaysAgo.toISOString().split('T')[0],
       timestamp: new Date().toISOString(),
     })
   } catch (error: any) {
