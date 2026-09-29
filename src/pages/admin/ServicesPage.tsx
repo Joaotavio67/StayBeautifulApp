@@ -14,8 +14,8 @@ function Modal({ title, children, onClose }: { title: string; children: React.Re
   )
 }
 
-type ServiceForm = { name: string; description: string; duration_minutes: string; price: string }
-const EMPTY_SERVICE_FORM: ServiceForm = { name: '', description: '', duration_minutes: '', price: '' }
+type ServiceForm = { name: string; description: string; duration_minutes: string; price: string; enable_payment: boolean }
+const EMPTY_SERVICE_FORM: ServiceForm = { name: '', description: '', duration_minutes: '', price: '', enable_payment: false }
 
 type ComboForm = { name: string; description: string; service_id_1: string; service_id_2: string; service_id_3: string; service_id_4: string; price: string }
 const EMPTY_COMBO_FORM: ComboForm = { name: '', description: '', service_id_1: '', service_id_2: '', service_id_3: '', service_id_4: '', price: '' }
@@ -83,6 +83,7 @@ export default function AdminServicesPage() {
       description: svc.description ?? '',
       duration_minutes: String(svc.duration_minutes),
       price: String(svc.price),
+      enable_payment: svc.enable_payment,
     })
     setServiceModalOpen(true)
   }
@@ -98,6 +99,7 @@ export default function AdminServicesPage() {
       description: serviceForm.description.trim() || null,
       duration_minutes: parseInt(serviceForm.duration_minutes),
       price: parseFloat(serviceForm.price),
+      enable_payment: serviceForm.enable_payment,
     }
 
     if (editingService) {
@@ -265,7 +267,14 @@ export default function AdminServicesPage() {
           {paginatedServices.map(svc => (
             <div key={svc.id} className="appt-card" style={{ opacity: svc.is_active ? 1 : 0.55 }}>
               <div className="appt-card__info">
-                <div className="appt-card__name">{svc.name}</div>
+                <div className="appt-card__name">
+                  {svc.name}
+                  {svc.enable_payment && (
+                    <span className="badge" style={{ marginLeft: '0.5rem', background: '#2d7a3e', color: 'white', fontSize: '0.75rem' }}>
+                      💳 Pagamento Online
+                    </span>
+                  )}
+                </div>
                 <div className="appt-card__meta">
                   {svc.description && <div style={{ fontStyle: 'italic' }}>{svc.description}</div>}
                   <div>⏱ {formatDuration(svc.duration_minutes)} &nbsp;·&nbsp; 💰 A partir de {formatPrice(svc.price)}</div>
@@ -409,6 +418,21 @@ export default function AdminServicesPage() {
               <input className="input" type="number" min="0" step="0.01" value={serviceForm.price} onChange={e => setServiceForm(f => ({ ...f, price: e.target.value }))} placeholder="80.00" />
             </div>
           </div>
+          <div className="field" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <input
+              type="checkbox"
+              id="enable_payment"
+              checked={serviceForm.enable_payment}
+              onChange={e => setServiceForm(f => ({ ...f, enable_payment: e.target.checked }))}
+              style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+            />
+            <label htmlFor="enable_payment" className="label" style={{ margin: 0, cursor: 'pointer' }}>
+              💳 Habilitar pagamento pelo site
+            </label>
+          </div>
+          <p style={{ fontSize: '0.8rem', color: 'var(--color-black)', marginTop: '0.5rem', marginBottom: '1rem' }}>
+            Se habilitado, cliente poderá pagar via Mercado Pago na confirmação. Se desabilitado, irá direto para aviso pelo WhatsApp.
+          </p>
           <div className="modal__actions">
             <button className="btn btn--ghost" onClick={() => setServiceModalOpen(false)}>Cancelar</button>
             <button className="btn btn--filled" onClick={handleSaveService} disabled={savingService}>

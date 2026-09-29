@@ -20,6 +20,7 @@ export interface Service {
   duration_minutes: number
   price: number
   is_active: boolean
+  enable_payment: boolean
   created_at: string
 }
 

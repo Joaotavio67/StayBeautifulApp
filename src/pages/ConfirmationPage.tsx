@@ -61,9 +61,12 @@ export default function ConfirmationPage() {
 
   useEffect(() => {
     if (!state) return
-    // Show payment modal after a brief delay (let the page render first)
-    const timer = setTimeout(() => setShowPaymentModal(true), 500)
-    return () => clearTimeout(timer)
+    // Show payment modal only if payment is enabled for this service
+    const shouldShowPayment = state.service?.enable_payment || false
+    if (shouldShowPayment) {
+      const timer = setTimeout(() => setShowPaymentModal(true), 500)
+      return () => clearTimeout(timer)
+    }
   }, [state])
 
   if (!state) {
@@ -192,7 +195,7 @@ export default function ConfirmationPage() {
             )}
           </button>
 
-          {state?.appointment && (
+          {state?.appointment && service?.enable_payment && (
             <PaymentSuggestionModal
               appointment={state.appointment}
               service={service}
