@@ -418,19 +418,19 @@ export default function AdminServicesPage() {
               <input className="input" type="number" min="0" step="0.01" value={serviceForm.price} onChange={e => setServiceForm(f => ({ ...f, price: e.target.value }))} placeholder="80.00" />
             </div>
           </div>
-          <div className="field" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
             <input
               type="checkbox"
               id="enable_payment"
               checked={serviceForm.enable_payment}
               onChange={e => setServiceForm(f => ({ ...f, enable_payment: e.target.checked }))}
-              style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+              style={{ width: '18px', height: '18px', cursor: 'pointer', flexShrink: 0 }}
             />
-            <label htmlFor="enable_payment" className="label" style={{ margin: 0, cursor: 'pointer' }}>
+            <label htmlFor="enable_payment" style={{ margin: 0, cursor: 'pointer', fontSize: '0.95rem', fontWeight: 500, display: 'inline' }}>
               💳 Habilitar pagamento pelo site
             </label>
           </div>
-          <p style={{ fontSize: '0.8rem', color: 'var(--color-black)', marginTop: '0.5rem', marginBottom: '1rem' }}>
+          <p style={{ fontSize: '0.8rem', color: 'var(--color-black)', marginTop: 0, marginBottom: '1rem', marginLeft: '2.5rem' }}>
             Se habilitado, cliente poderá pagar via Mercado Pago na confirmação. Se desabilitado, irá direto para aviso pelo WhatsApp.
           </p>
           <div className="modal__actions">
