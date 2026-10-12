@@ -7,6 +7,8 @@ import PaymentSuggestionModal from '../components/PaymentSuggestionModal'
 import { supabase } from '../lib/supabase'
 import type { Appointment, Service, Combo } from '../lib/supabase'
 import { formatPrice } from '../lib/utils'
+import { addToPhoneCalendar } from '../lib/clientCalendar'
+import type { ClientCalendarEvent } from '../lib/clientCalendar'
 
 interface ConfirmationState {
   appointment?: Appointment
@@ -17,7 +19,7 @@ interface ConfirmationState {
   cancelToken: string
   isCombo?: boolean
   combo?: Combo
-  comboSessions?: { sessionIndex: number; dateFormatted: string; time: string; price: number; serviceName?: string }[]
+  comboSessions?: { sessionIndex: number; date?: string; dateFormatted: string; time: string; price: number; serviceName?: string; durationMinutes?: number }[]
   totalPrice?: number
   comboGroupId?: string
 }
@@ -85,6 +87,29 @@ export default function ConfirmationPage() {
   }
 
   const { service, dateFormatted, time, waUrl, cancelToken, isCombo, combo, comboSessions, totalPrice, comboGroupId } = state
+
+  const cancelUrl = cancelToken ? `${window.location.origin}/cancelar/${cancelToken}` : undefined
+  const calendarEvents: ClientCalendarEvent[] = isCombo
+    ? (comboSessions ?? [])
+        .filter(s => s.date)
+        .map(s => ({
+          uid: `${comboGroupId}-${s.sessionIndex}`,
+          serviceName: `${s.serviceName ?? combo?.name ?? 'Combo'} (Sessão ${s.sessionIndex} de 4)`,
+          date: s.date!,
+          time: s.time,
+          durationMinutes: s.durationMinutes ?? 60,
+          cancelUrl,
+        }))
+    : state.appointment && service
+      ? [{
+          uid: state.appointment.id,
+          serviceName: service.name,
+          date: state.appointment.appointment_date,
+          time: time ?? state.appointment.appointment_time,
+          durationMinutes: service.duration_minutes,
+          cancelUrl,
+        }]
+      : []
 
   async function handleWhatsAppClick() {
     setLoadingAvisado(true)
@@ -170,6 +195,16 @@ export default function ConfirmationPage() {
               </>
             )}
           </div>
+
+          {calendarEvents.length > 0 && (
+            <button
+              onClick={() => addToPhoneCalendar(calendarEvents)}
+              className="btn btn--full"
+              style={{ marginBottom: '1.5rem', padding: '0.85rem 1.25rem' }}
+            >
+              📅 {isCombo ? 'Salvar as 4 sessões na minha agenda' : 'Salvar na minha agenda'}
+            </button>
+          )}
 
           <p className="info-text" style={{ marginBottom: '1.5rem' }}>
             Se a janela do WhatsApp não abriu automaticamente, clique no botão abaixo para avisar a Joyce sobre seu agendamento.

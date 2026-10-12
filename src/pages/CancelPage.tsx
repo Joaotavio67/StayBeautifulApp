@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import type { Appointment, Service } from '../lib/supabase'
 import { formatDateBR, formatPrice } from '../lib/utils'
 import { removeCalendarEventForAppointment, removeCalendarEventsForComboGroup } from '../lib/calendar'
+import { addToPhoneCalendar } from '../lib/clientCalendar'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
 import DiamondDivider from '../components/DiamondDivider'
@@ -132,6 +133,23 @@ export default function CancelPage() {
                   </div>
                 ))}
               </div>
+
+              <button
+                className="btn btn--full"
+                style={{ marginBottom: '1.5rem' }}
+                onClick={() => addToPhoneCalendar([{
+                  uid: appt.id,
+                  serviceName: isCombo
+                    ? `${appt.service?.name ?? appt.combo_name ?? 'Combo'} (Sessão ${appt.combo_session_index} de 4)`
+                    : appt.service?.name ?? 'Atendimento',
+                  date: appt.appointment_date,
+                  time: appt.appointment_time,
+                  durationMinutes: appt.service?.duration_minutes ?? 60,
+                  cancelUrl: window.location.href,
+                }])}
+              >
+                📅 Salvar na minha agenda
+              </button>
 
               <div className="notice-box">
                 Tem certeza que deseja cancelar? O horário selecionado ficará imediatamente disponível para outras clientes.

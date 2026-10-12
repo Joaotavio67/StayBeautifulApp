@@ -418,13 +418,19 @@ export default function BookingPage() {
           })
         })
 
-        const formattedSessions = comboSessions.map((s, idx) => ({
-          sessionIndex: idx + 1,
-          dateFormatted: formatDateBR(format(s.date!, 'yyyy-MM-dd')),
-          time: s.time!,
-          price: idx === 3 ? baseSessionPrice + remainder : baseSessionPrice,
-          serviceName: getComboSessionService(selectedCombo, idx).service?.name,
-        }))
+        const formattedSessions = comboSessions.map((s, idx) => {
+          const { service } = getComboSessionService(selectedCombo, idx)
+          const dateStr = format(s.date!, 'yyyy-MM-dd')
+          return {
+            sessionIndex: idx + 1,
+            date: dateStr,
+            dateFormatted: formatDateBR(dateStr),
+            time: s.time!,
+            price: idx === 3 ? baseSessionPrice + remainder : baseSessionPrice,
+            serviceName: service?.name,
+            durationMinutes: service?.duration_minutes ?? 60,
+          }
+        })
 
         const waUrl = buildComboWhatsAppUrl(
           name.trim(),
