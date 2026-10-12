@@ -849,7 +849,7 @@ export default function BookingPage() {
               </div>
 
               <div className="notice-box">
-                ✨ Ao clicar no botão abaixo, seu horário será confirmado imediatamente e você será redirecionada ao WhatsApp da Joyce.
+                ✨ Ao confirmar, seu horário fica garantido na hora e você será levada ao WhatsApp da Joyce. Na tela seguinte, você também pode salvar o agendamento na agenda do celular 📅
               </div>
 
               <div style={{ display: 'flex', gap: '0.75rem' }}>
