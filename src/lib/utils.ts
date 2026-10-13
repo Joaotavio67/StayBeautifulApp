@@ -152,6 +152,31 @@ export function getAvailableSlots(
 }
 
 /**
+ * Whether a booking at `time` ("HH:MM") lasting `durationMinutes` overlaps an
+ * existing confirmed/completed appointment on that date. Ignores working hours,
+ * so the admin can fit clients in outside the regular schedule.
+ */
+export function hasAppointmentConflict(
+  date: Date,
+  time: string,
+  durationMinutes: number,
+  appointments: Appointment[]
+): boolean {
+  const dateStr = format(date, 'yyyy-MM-dd')
+  const { h, m } = parseTime(time)
+  const start = setSeconds(setMinutes(setHours(date, h), m), 0)
+  const end = addMinutes(start, durationMinutes)
+  return appointments
+    .filter((a) => a.appointment_date === dateStr && (a.status === 'confirmed' || a.status === 'completed'))
+    .some((a) => {
+      const [ah, am] = a.appointment_time.split(':').map(Number)
+      const apptStart = setSeconds(setMinutes(setHours(date, ah), am), 0)
+      const apptEnd = addMinutes(apptStart, a.service?.duration_minutes ?? 60)
+      return isBefore(start, apptEnd) && isAfter(end, apptStart)
+    })
+}
+
+/**
  * Earliest bookable date for an item: today, unless today has no slots left
  * (already closed, fully booked, or every remaining slot is in the past) —
  * in that case, the next working day.

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import type { Appointment, Service, BlockedSlot, WorkingHours } from '../../lib/supabase'
-import { formatDateBR, formatPrice, formatPhone, rawPhone, getAvailableSlots, getBookingFloor, buildWhatsAppUrl } from '../../lib/utils'
+import { formatDateBR, formatPrice, formatPhone, rawPhone, getAvailableSlots, getBookingFloor, buildWhatsAppUrl, hasAppointmentConflict } from '../../lib/utils'
 import { removeCalendarEventForAppointment, syncAppointmentToCalendar } from '../../lib/calendar'
 import { format, isToday, parseISO, startOfWeek, endOfWeek } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -40,7 +40,7 @@ function Modal({ title, children, onClose }: { title: string; children: React.Re
   )
 }
 
-const EMPTY_MANUAL_FORM = { serviceId: '', clientName: '', clientPhone: '', date: null as Date | null, time: null as string | null }
+const EMPTY_MANUAL_FORM = { serviceId: '', clientName: '', clientPhone: '', date: null as Date | null, time: null as string | null, outsideHours: false }
 
 export default function AdminAgendaPage() {
   const [appointments, setAppointments] = useState<AppointmentWithService[]>([])
@@ -171,7 +171,7 @@ export default function AdminAgendaPage() {
     ? getAvailableSlots(manualForm.date, manualSelectedService, workingHours, appointments, blockedSlots)
     : []
   const manualMinDate = manualSelectedService
-    ? getBookingFloor(manualSelectedService, workingHours, appointments, blockedSlots)
+    ? (manualForm.outsideHours ? new Date() : getBookingFloor(manualSelectedService, workingHours, appointments, blockedSlots))
     : undefined
 
   async function handleSaveManual() {
@@ -182,6 +182,10 @@ export default function AdminAgendaPage() {
     const digits = rawPhone(manualForm.clientPhone)
     if (digits.length < 10) {
       alert('Informe um telefone celular válido.')
+      return
+    }
+    if (manualForm.outsideHours && hasAppointmentConflict(manualForm.date, manualForm.time, manualSelectedService.duration_minutes, appointments)) {
+      alert('Já existe um agendamento que ocupa esse horário. Escolha outro horário.')
       return
     }
 
@@ -539,7 +543,29 @@ export default function AdminAgendaPage() {
           {manualForm.date && manualSelectedService && (
             <div className="field">
               <label className="label">Horário *</label>
-              {manualSlots.length === 0 ? (
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', marginBottom: '0.75rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={manualForm.outsideHours}
+                  onChange={e => setManualForm(f => ({ ...f, outsideHours: e.target.checked, time: null }))}
+                />
+                Encaixe fora do expediente (escolher qualquer horário)
+              </label>
+              {manualForm.outsideHours ? (
+                <>
+                  <input
+                    className="input"
+                    type="time"
+                    value={manualForm.time ?? ''}
+                    onChange={e => setManualForm(f => ({ ...f, time: e.target.value || null }))}
+                  />
+                  {manualForm.time && hasAppointmentConflict(manualForm.date, manualForm.time, manualSelectedService.duration_minutes, appointments) && (
+                    <p style={{ color: '#8B0000', fontStyle: 'italic', fontSize: '0.9rem', marginTop: '0.5rem' }}>
+                      Esse horário conflita com outro agendamento.
+                    </p>
+                  )}
+                </>
+              ) : manualSlots.length === 0 ? (
                 <p style={{ color: '#8B0000', fontStyle: 'italic', fontSize: '0.9rem' }}>
                   Nenhum horário disponível nesta data.
                 </p>

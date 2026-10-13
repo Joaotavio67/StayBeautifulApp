@@ -5,17 +5,17 @@ export default function Footer() {
       <div className="footer__tagline">Joyce Araújo · Pirapora do Bom Jesus/SP</div>
       <div className="footer__info">
         <div>
-          <div className="footer__info-title">Endereço</div>
+          <div className="footer__info-title">📍 Endereço</div>
           <a href="https://maps.google.com/?q=Rua+Carmo+Vieira+430+Jardim+Bom+Jesus+Pirapora+do+Bom+Jesus+SP" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px solid currentColor' }}>
             Rua Carmo Vieira, 430<br />Jardim Bom Jesus
           </a>
         </div>
         <div>
-          <div className="footer__info-title">Horários</div>
+          <div className="footer__info-title">🕐 Horários</div>
           Seg – Sex: 14h às 20h<br />Sábado: 8h às 18h
         </div>
         <div>
-          <div className="footer__info-title">Contato</div>
+          <div className="footer__info-title">📱 Contato</div>
           (11) 99736-1024<br />@stay_beautiful.l
         </div>
       </div>
