@@ -3,13 +3,6 @@ import Header from '../components/Header'
 import Footer from '../components/Footer'
 import DiamondDivider from '../components/DiamondDivider'
 
-const SERVICES_PREVIEW = [
-  { name: 'Progressiva sem Formol', desc: 'Alinha os fios, reduz volume e elimina frizz com blend de óleos nobres' },
-  { name: 'Coloração', desc: 'Aplicação profissional com higienização e protetor térmico' },
-  { name: 'Penteados', desc: 'Noivas, formaturas e eventos com finalização profissional' },
-  { name: 'Escova + Hidratação', desc: 'Tratamento intensivo com reposição de nutrientes e escova' },
-]
-
 export default function HomePage() {
   return (
     <>
@@ -108,50 +101,6 @@ export default function HomePage() {
               </div>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* Services preview */}
-      <section style={{ padding: '5rem 1.25rem' }}>
-        <div className="container">
-          <p className="page-subtitle" style={{ color: '#111111', fontWeight: 700 }}>O que oferecemos</p>
-          <h2 className="section-title text-center" style={{ fontSize: '2.25rem', marginBottom: '2.5rem', color: '#111111' }}>Serviços</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1.25rem' }}>
-            {SERVICES_PREVIEW.map(s => (
-              <div key={s.name} className="card" style={{ textAlign: 'center', background: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
-                <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.15rem', fontWeight: 600, marginBottom: '0.5rem', color: '#111111' }}>{s.name}</h3>
-                <p style={{ fontSize: '0.9rem', color: '#111111', fontFamily: 'var(--font-body)', fontWeight: 400 }}>{s.desc}</p>
-              </div>
-            ))}
-          </div>
-          <div style={{ textAlign: 'center', marginTop: '2.5rem' }}>
-            <Link to="/agendar" className="btn btn--filled" style={{ padding: '0.85rem 2.5rem' }}>
-              Ver todos os serviços e agendar
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Info bar */}
-      <section style={{ background: 'var(--color-black)', color: 'var(--color-white)', padding: '4rem 1.25rem' }}>
-        <div className="container" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '3.5rem', textAlign: 'center' }}>
-          {[
-            { icon: '📍', title: 'Localização', body: 'Rua Carmo Vieira, 430\nJardim Bom Jesus — Pirapora do Bom Jesus/SP' },
-            { icon: '🕐', title: 'Horários', body: 'Segunda a Sexta: 14h – 20h\nSábado: 8h – 18h' },
-            { icon: '📱', title: 'Contato', body: '(11) 99736-1024\n@stay_beautiful.l' },
-          ].map(item => (
-            <div key={item.title} style={{ maxWidth: '220px' }}>
-              <div style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>{item.icon}</div>
-              <div style={{ fontFamily: 'var(--font-elegant)', fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', opacity: 0.7, marginBottom: '0.5rem' }}>{item.title}</div>
-              {item.title === 'Localização' ? (
-                <a href="https://maps.google.com/?q=Rua+Carmo+Vieira+430+Jardim+Bom+Jesus+Pirapora+do+Bom+Jesus+SP" target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.9rem', opacity: 0.9, whiteSpace: 'pre-line', lineHeight: '1.6', fontWeight: 300, color: 'inherit', textDecoration: 'none', borderBottom: '1px solid currentColor', display: 'inline-block' }}>
-                  {item.body}
-                </a>
-              ) : (
-                <div style={{ fontSize: '0.9rem', opacity: 0.9, whiteSpace: 'pre-line', lineHeight: '1.6', fontWeight: 300 }}>{item.body}</div>
-              )}
-            </div>
-          ))}
         </div>
       </section>
 
