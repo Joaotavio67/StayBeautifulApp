@@ -2,8 +2,11 @@ import { Link } from 'react-router-dom'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
 import DiamondDivider from '../components/DiamondDivider'
+import { useSalonInfo, formatHoursLines } from '../lib/salonInfo'
 
 export default function HomePage() {
+  const { info, hours } = useSalonInfo()
+
   return (
     <>
       <Header />
@@ -23,7 +26,7 @@ export default function HomePage() {
             animationDelay: '0.1s',
           }}
         >
-          Joyce Araújo · Cabeleireira · +8 anos de experiência
+          {info.professional} · Cabeleireira · +8 anos de experiência
         </p>
 
         <h1 className="page-title animate-in" style={{ animationDelay: '0.2s', fontSize: 'clamp(3.8rem, 12vw, 7.5rem)', color: '#111111' }}>
@@ -73,7 +76,7 @@ export default function HomePage() {
             animationDelay: '0.6s',
           }}
         >
-          Seg – Sex · 14h às 20h &nbsp;|&nbsp; Sábado · 8h às 18h
+          {formatHoursLines(hours).map(l => `${l.days} · ${l.time}`).join('  |  ')}
         </p>
       </section>
 
@@ -81,7 +84,7 @@ export default function HomePage() {
       <section style={{ background: 'var(--color-bg-alt)', padding: '5rem 1.25rem' }}>
         <div className="container" style={{ textAlign: 'center' }}>
           <p className="page-subtitle" style={{ color: '#111111', fontWeight: 700 }}>Sobre a profissional</p>
-          <h2 className="section-title" style={{ fontSize: '2.25rem', marginBottom: '1.5rem', color: '#111111' }}>Joyce Araújo</h2>
+          <h2 className="section-title" style={{ fontSize: '2.25rem', marginBottom: '1.5rem', color: '#111111' }}>{info.professional}</h2>
           <p style={{ maxWidth: '580px', margin: '0 auto', color: '#111111', fontSize: '1.05rem', lineHeight: '1.9', fontWeight: 400 }}>
             Formada em 2017, Joyce dedica mais de 8 anos ao ofício da cabeleireira com
             paixão, técnica e atenção individualizada a cada cliente. Com atendimento

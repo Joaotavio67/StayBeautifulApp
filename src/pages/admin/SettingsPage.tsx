@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import type { WorkingHours, WorkingHoursDay } from '../../lib/supabase'
-import { DAY_NAMES_PT } from '../../lib/utils'
+import { DAY_NAMES_PT, formatPhone, rawPhone } from '../../lib/utils'
+import { DEFAULT_SALON_INFO, formatWhatsapp } from '../../lib/salonInfo'
+import type { SalonInfo } from '../../lib/salonInfo'
 
 const DEFAULT_HOURS: WorkingHours = {
   monday:    { open: '14:00', close: '20:00', enabled: true },
@@ -22,6 +24,13 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+
+  // Salon info state
+  const [salonInfo, setSalonInfo] = useState<SalonInfo>(DEFAULT_SALON_INFO)
+  const [editingInfo, setEditingInfo] = useState(false)
+  const [infoDraft, setInfoDraft] = useState<SalonInfo>(DEFAULT_SALON_INFO)
+  const [infoSaving, setInfoSaving] = useState(false)
+  const [infoMsg, setInfoMsg] = useState<{ type: 'ok' | 'error'; text: string } | null>(null)
 
   // Account (login email / password) state
   const [currentAccountEmail, setCurrentAccountEmail] = useState('')
@@ -81,8 +90,11 @@ export default function AdminSettingsPage() {
 
   useEffect(() => {
     async function loadSettings() {
-      const { data } = await supabase.from('settings').select('*').eq('key', 'working_hours').maybeSingle()
-      if (data?.value) setHours(data.value as WorkingHours)
+      const { data } = await supabase.from('settings').select('*').in('key', ['working_hours', 'salon_info'])
+      for (const row of data ?? []) {
+        if (row.key === 'working_hours' && row.value) setHours(row.value as WorkingHours)
+        if (row.key === 'salon_info' && row.value) setSalonInfo({ ...DEFAULT_SALON_INFO, ...row.value })
+      }
       setLoading(false)
     }
     loadSettings()
@@ -103,6 +115,44 @@ export default function AdminSettingsPage() {
     setSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 3000)
+  }
+
+  function startEditInfo() {
+    setInfoDraft({ ...salonInfo, whatsapp: formatPhone(salonInfo.whatsapp) })
+    setInfoMsg(null)
+    setEditingInfo(true)
+  }
+
+  async function handleSaveInfo() {
+    const whatsapp = rawPhone(infoDraft.whatsapp)
+    const next: SalonInfo = {
+      professional: infoDraft.professional.trim(),
+      street: infoDraft.street.trim(),
+      neighborhood: infoDraft.neighborhood.trim(),
+      city: infoDraft.city.trim(),
+      whatsapp,
+      instagram: infoDraft.instagram.trim().replace(/^@/, ''),
+    }
+    if (!next.professional || !next.street || !next.city || !next.instagram) {
+      setInfoMsg({ type: 'error', text: 'Preencha nome, endereço, cidade e Instagram.' })
+      return
+    }
+    if (whatsapp.length < 10) {
+      setInfoMsg({ type: 'error', text: 'Informe um WhatsApp válido com DDD.' })
+      return
+    }
+    setInfoSaving(true)
+    const { error } = await supabase
+      .from('settings')
+      .upsert({ key: 'salon_info', value: next, updated_at: new Date().toISOString() })
+    setInfoSaving(false)
+    if (error) {
+      setInfoMsg({ type: 'error', text: error.message })
+    } else {
+      setSalonInfo(next)
+      setEditingInfo(false)
+      setInfoMsg({ type: 'ok', text: 'Informações atualizadas! Já aparecem na tela inicial.' })
+    }
   }
 
   if (loading) return <div className="spinner" />
@@ -260,15 +310,68 @@ export default function AdminSettingsPage() {
 
       {/* Salon info card */}
       <div className="card">
-        <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.15rem', marginBottom: '1rem' }}>
-          Informações do Salão
-        </h2>
-        <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.9rem', color: 'var(--color-black)' }}>
-          <div><strong>Profissional:</strong> Joyce Araújo</div>
-          <div><strong>Endereço:</strong> Rua Carmo Vieira, 430 — Jardim Bom Jesus, Pirapora do Bom Jesus/SP</div>
-          <div><strong>WhatsApp:</strong> (11) 99736-1024</div>
-          <div><strong>Instagram:</strong> @stay_beautiful.l</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+          <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.15rem' }}>
+            Informações do Salão
+          </h2>
+          {!editingInfo && (
+            <button className="btn btn--sm" onClick={startEditInfo}>Editar informações</button>
+          )}
         </div>
+
+        {editingInfo ? (
+          <>
+            <div className="field">
+              <label className="label">Profissional</label>
+              <input className="input" value={infoDraft.professional} onChange={e => setInfoDraft(d => ({ ...d, professional: e.target.value }))} />
+            </div>
+            <div className="field">
+              <label className="label">Endereço (rua e número)</label>
+              <input className="input" value={infoDraft.street} onChange={e => setInfoDraft(d => ({ ...d, street: e.target.value }))} placeholder="Rua Carmo Vieira, 430" />
+            </div>
+            <div className="field">
+              <label className="label">Bairro</label>
+              <input className="input" value={infoDraft.neighborhood} onChange={e => setInfoDraft(d => ({ ...d, neighborhood: e.target.value }))} />
+            </div>
+            <div className="field">
+              <label className="label">Cidade/UF</label>
+              <input className="input" value={infoDraft.city} onChange={e => setInfoDraft(d => ({ ...d, city: e.target.value }))} placeholder="Pirapora do Bom Jesus/SP" />
+            </div>
+            <div className="field">
+              <label className="label">WhatsApp</label>
+              <input className="input" type="tel" value={infoDraft.whatsapp} onChange={e => setInfoDraft(d => ({ ...d, whatsapp: formatPhone(e.target.value) }))} placeholder="(11) 99999-9999" />
+            </div>
+            <div className="field">
+              <label className="label">Instagram</label>
+              <input className="input" value={infoDraft.instagram} onChange={e => setInfoDraft(d => ({ ...d, instagram: e.target.value }))} placeholder="@usuario" />
+            </div>
+            {infoMsg && (
+              <p style={{ fontSize: '0.82rem', marginBottom: '0.75rem', color: infoMsg.type === 'ok' ? '#2d4a2d' : '#8B0000' }}>
+                {infoMsg.text}
+              </p>
+            )}
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button className="btn btn--ghost" onClick={() => { setEditingInfo(false); setInfoMsg(null) }} disabled={infoSaving}>Cancelar</button>
+              <button className="btn btn--filled" onClick={handleSaveInfo} disabled={infoSaving}>
+                {infoSaving ? 'Salvando...' : 'Salvar informações'}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.9rem', color: 'var(--color-black)' }}>
+              <div><strong>Profissional:</strong> {salonInfo.professional}</div>
+              <div><strong>Endereço:</strong> {salonInfo.street} — {salonInfo.neighborhood}, {salonInfo.city}</div>
+              <div><strong>WhatsApp:</strong> {formatWhatsapp(salonInfo.whatsapp)}</div>
+              <div><strong>Instagram:</strong> @{salonInfo.instagram}</div>
+            </div>
+            {infoMsg && (
+              <p style={{ fontSize: '0.82rem', marginTop: '0.75rem', color: infoMsg.type === 'ok' ? '#2d4a2d' : '#8B0000' }}>
+                {infoMsg.text}
+              </p>
+            )}
+          </>
+        )}
       </div>
     </div>
   )
