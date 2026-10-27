@@ -62,12 +62,30 @@ export default function BookingPage() {
         supabase.from('blocked_slots').select('*').eq('is_active', true),
         supabase.from('settings').select('*').eq('key', 'working_hours').single(),
       ])
-      const loadedServices = svcRes.data || []
+      // Popularity: standalone bookings per service, distinct bookings per combo
+      const serviceCounts = new Map<string, number>()
+      const comboGroups = new Map<string, Set<string>>()
+      for (const a of (apptRes.data || []) as Appointment[]) {
+        if (a.combo_group_id) {
+          if (!a.combo_name) continue
+          if (!comboGroups.has(a.combo_name)) comboGroups.set(a.combo_name, new Set())
+          comboGroups.get(a.combo_name)!.add(a.combo_group_id)
+        } else if (a.service_id) {
+          serviceCounts.set(a.service_id, (serviceCounts.get(a.service_id) || 0) + 1)
+        }
+      }
+
+      const loadedServices = [...(svcRes.data || [])].sort((a, b) =>
+        (serviceCounts.get(b.id) || 0) - (serviceCounts.get(a.id) || 0) || a.name.localeCompare(b.name)
+      )
       setServices(loadedServices)
 
       if (comboRes.data) {
+        const comboCount = (c: Combo) => comboGroups.get(c.name)?.size || 0
         // Hydrate service1..service4 for each combo
-        const hydrated = comboRes.data.map((c: Combo) => ({
+        const hydrated = [...comboRes.data].sort((a: Combo, b: Combo) =>
+          comboCount(b) - comboCount(a) || a.name.localeCompare(b.name)
+        ).map((c: Combo) => ({
           ...c,
           service1: loadedServices.find(s => s.id === c.service_id_1),
           service2: loadedServices.find(s => s.id === c.service_id_2),
