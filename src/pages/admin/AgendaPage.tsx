@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
-import type { Appointment, Service, BlockedSlot, WorkingHours } from '../../lib/supabase'
-import { formatDateBR, formatPrice, formatPhone, rawPhone, getAvailableSlots, getBookingFloor, buildWhatsAppUrl, hasAppointmentConflict } from '../../lib/utils'
+import type { Appointment, Service, Combo, BlockedSlot, WorkingHours } from '../../lib/supabase'
+import { formatDateBR, formatPrice, formatPhone, rawPhone, getAvailableSlots, getBookingFloor, buildWhatsAppUrl, buildComboWhatsAppUrl, hasAppointmentConflict, addWorkingDays, getComboSessionService } from '../../lib/utils'
 import { removeCalendarEventForAppointment, syncAppointmentToCalendar } from '../../lib/calendar'
-import { format, isToday, parseISO, startOfWeek, endOfWeek } from 'date-fns'
+import { format, isToday, parseISO, startOfWeek, endOfWeek, addDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import Calendar from '../../components/Calendar'
 
@@ -40,7 +40,25 @@ function Modal({ title, children, onClose }: { title: string; children: React.Re
   )
 }
 
-const EMPTY_MANUAL_FORM = { serviceId: '', clientName: '', clientPhone: '', date: null as Date | null, time: null as string | null, outsideHours: false }
+type ManualSession = { date: Date | null; time: string | null; outsideHours: boolean }
+
+const EMPTY_SESSION: ManualSession = { date: null, time: null, outsideHours: false }
+
+// Same rules as the public booking page: each combo session must be at least
+// 5 working days after the previous one, and all 4 within 30 days of the first.
+const MIN_SESSION_GAP_DAYS = 5
+const COMBO_WINDOW_DAYS = 30
+const COMBO_PREFIX = 'combo:'
+
+// itemKey is '' (nothing), a service id, or 'combo:<comboId>'.
+// A service booking uses a single session; a combo uses 4.
+const EMPTY_MANUAL_FORM = {
+  itemKey: '',
+  clientName: '',
+  clientPhone: '',
+  sessions: [EMPTY_SESSION] as ManualSession[],
+  activeSession: 0,
+}
 
 export default function AdminAgendaPage() {
   const [appointments, setAppointments] = useState<AppointmentWithService[]>([])
@@ -51,6 +69,7 @@ export default function AdminAgendaPage() {
 
   // Data needed for the manual booking form's date/time picker
   const [services, setServices] = useState<Service[]>([])
+  const [combos, setCombos] = useState<Combo[]>([])
   const [blockedSlots, setBlockedSlots] = useState<BlockedSlot[]>([])
   const [workingHours, setWorkingHours] = useState<WorkingHours>(DEFAULT_WORKING_HOURS)
 
@@ -74,12 +93,25 @@ export default function AdminAgendaPage() {
   }
 
   async function loadSchedulingData() {
-    const [svcRes, blockedRes, settingsRes] = await Promise.all([
-      supabase.from('services').select('*').eq('is_active', true).order('name'),
+    const [svcRes, comboRes, blockedRes, settingsRes] = await Promise.all([
+      supabase.from('services').select('*').order('name'),
+      supabase.from('combos').select('*').eq('is_active', true).order('name'),
       supabase.from('blocked_slots').select('*').eq('is_active', true),
       supabase.from('settings').select('*').eq('key', 'working_hours').single(),
     ])
-    if (svcRes.data) setServices(svcRes.data)
+    const allServices: Service[] = svcRes.data || []
+    setServices(allServices.filter(s => s.is_active))
+    if (comboRes.data) {
+      // Hydrate service1..service4 (from all services, so a combo still works
+      // even if one of its services was later deactivated)
+      setCombos(comboRes.data.map((c: Combo) => ({
+        ...c,
+        service1: allServices.find(s => s.id === c.service_id_1),
+        service2: allServices.find(s => s.id === c.service_id_2),
+        service3: allServices.find(s => s.id === c.service_id_3),
+        service4: allServices.find(s => s.id === c.service_id_4),
+      })))
+    }
     if (blockedRes.data) setBlockedSlots(blockedRes.data)
     if (settingsRes.data?.value) setWorkingHours(settingsRes.data.value as WorkingHours)
   }
@@ -166,17 +198,177 @@ export default function AdminAgendaPage() {
     setManualModalOpen(true)
   }
 
-  const manualSelectedService = services.find(s => s.id === manualForm.serviceId) || null
-  const manualSlots = manualForm.date && manualSelectedService
-    ? getAvailableSlots(manualForm.date, manualSelectedService, workingHours, appointments, blockedSlots)
+  // ── Manual booking: service (1 session) or combo (4 sessions) ──
+  const manualCombo = manualForm.itemKey.startsWith(COMBO_PREFIX)
+    ? combos.find(c => COMBO_PREFIX + c.id === manualForm.itemKey) || null
+    : null
+  const manualService = manualCombo ? null : services.find(s => s.id === manualForm.itemKey) || null
+  const manualSessionServices: (Service | undefined)[] = manualCombo
+    ? [0, 1, 2, 3].map(i => getComboSessionService(manualCombo, i).service)
+    : manualService ? [manualService] : []
+
+  const activeIdx = manualForm.activeSession
+  const activeManualSession = manualForm.sessions[activeIdx] ?? EMPTY_SESSION
+  const activeManualService = manualSessionServices[activeIdx] || null
+
+  // Sessions must be filled in order: a tab unlocks once every earlier one has date + time
+  const firstEmptyManualIdx = manualForm.sessions.findIndex(s => !s.date || !s.time)
+  const lastUnlockedManualIdx = firstEmptyManualIdx === -1 ? manualForm.sessions.length - 1 : firstEmptyManualIdx
+  const filledManualSessions = manualForm.sessions.filter(s => s.date && s.time).length
+
+  const previousManualSession = manualCombo && activeIdx > 0 ? manualForm.sessions[activeIdx - 1] : null
+  const manualSessionMinDate = previousManualSession?.date
+    ? addWorkingDays(previousManualSession.date, MIN_SESSION_GAP_DAYS, workingHours, blockedSlots)
+    : null
+  const manualComboMaxDate = manualCombo && activeIdx > 0 && manualForm.sessions[0].date
+    ? addDays(manualForm.sessions[0].date, COMBO_WINDOW_DAYS)
+    : null
+
+  const manualSlots = activeManualSession.date && activeManualService
+    ? getAvailableSlots(activeManualSession.date, activeManualService, workingHours, appointments, blockedSlots)
     : []
-  const manualMinDate = manualSelectedService
-    ? (manualForm.outsideHours ? new Date() : getBookingFloor(manualSelectedService, workingHours, appointments, blockedSlots))
-    : undefined
+  const manualMinDate = manualSessionMinDate
+    ?? (activeManualService
+      ? (activeManualSession.outsideHours ? new Date() : getBookingFloor(activeManualService, workingHours, appointments, blockedSlots))
+      : undefined)
+
+  function selectManualItem(itemKey: string) {
+    const sessionCount = itemKey.startsWith(COMBO_PREFIX) ? 4 : 1
+    setManualForm(f => ({
+      ...f,
+      itemKey,
+      sessions: Array.from({ length: sessionCount }, () => ({ ...EMPTY_SESSION })),
+      activeSession: 0,
+    }))
+  }
+
+  /** Updates the active session. Any later sessions are cleared, since their
+   * dates may no longer respect the order / minimum gap. */
+  function updateActiveSession(patch: Partial<ManualSession>, advance = false) {
+    setManualForm(f => {
+      const sessions = [...f.sessions]
+      sessions[f.activeSession] = { ...sessions[f.activeSession], ...patch }
+      for (let i = f.activeSession + 1; i < sessions.length; i++) sessions[i] = { ...EMPTY_SESSION }
+      const activeSession = advance && f.activeSession < sessions.length - 1 ? f.activeSession + 1 : f.activeSession
+      return { ...f, sessions, activeSession }
+    })
+  }
+
+  async function saveManualService(service: Service, clientName: string, digits: string) {
+    const session = manualForm.sessions[0]
+    const dateStr = format(session.date!, 'yyyy-MM-dd')
+    const time = session.time!
+    const { data: appt, error } = await supabase
+      .from('appointments')
+      .insert({
+        service_id: service.id,
+        client_name: clientName,
+        client_phone: digits,
+        appointment_date: dateStr,
+        appointment_time: time + ':00',
+        status: 'confirmed',
+        price: service.price,
+        avisado_whatsapp: false,
+      })
+      .select('*, service:services(*)')
+      .single()
+
+    if (error || !appt) throw error || new Error('Não foi possível salvar o agendamento.')
+
+    syncAppointmentToCalendar({
+      appointmentId: appt.id,
+      clientName,
+      clientPhone: manualForm.clientPhone,
+      serviceName: service.name,
+      date: dateStr,
+      time,
+      durationMinutes: service.duration_minutes,
+      notes: 'Migrado de outro sistema de agendamento',
+    })
+
+    const cancelUrl = `${window.location.origin}/cancelar/${appt.cancel_token}`
+    window.open(buildWhatsAppUrl(
+      clientName,
+      service.name,
+      formatDateBR(dateStr),
+      time,
+      `A partir de ${formatPrice(service.price)}`,
+      cancelUrl
+    ), '_blank')
+  }
+
+  async function saveManualCombo(combo: Combo, clientName: string, digits: string) {
+    // 4 appointments sharing a combo_group_id, price split like the public booking page
+    const comboGroupId = crypto.randomUUID()
+    const baseSessionPrice = Math.floor((combo.price / 4) * 100) / 100
+    const remainder = Math.round((combo.price - baseSessionPrice * 4) * 100) / 100
+
+    const sessions = manualForm.sessions.map((s, idx) => ({
+      dateStr: format(s.date!, 'yyyy-MM-dd'),
+      time: s.time!,
+      service: manualSessionServices[idx]!,
+      price: idx === 3 ? baseSessionPrice + remainder : baseSessionPrice,
+    }))
+
+    const { data: created, error } = await supabase
+      .from('appointments')
+      .insert(sessions.map((s, idx) => ({
+        service_id: s.service.id,
+        client_name: clientName,
+        client_phone: digits,
+        appointment_date: s.dateStr,
+        appointment_time: s.time + ':00',
+        status: 'confirmed',
+        price: s.price,
+        combo_group_id: comboGroupId,
+        combo_session_index: idx + 1,
+        combo_name: combo.name,
+        avisado_whatsapp: false,
+      })))
+      .select('*')
+
+    if (error || !created || created.length === 0) throw error || new Error('Não foi possível salvar o combo.')
+
+    // Inserted rows come back in insert order; match by session index to be safe
+    for (const appt of created) {
+      const s = sessions[(appt.combo_session_index ?? 1) - 1]
+      syncAppointmentToCalendar({
+        appointmentId: appt.id,
+        clientName,
+        clientPhone: manualForm.clientPhone,
+        serviceName: s.service.name,
+        date: s.dateStr,
+        time: s.time,
+        durationMinutes: s.service.duration_minutes,
+        notes: `Sessão ${appt.combo_session_index} de 4 — ${combo.name}`,
+      })
+    }
+
+    const firstAppt = created.find(a => a.combo_session_index === 1) ?? created[0]
+    const cancelUrl = `${window.location.origin}/cancelar/${firstAppt.cancel_token}`
+    window.open(buildComboWhatsAppUrl(
+      clientName,
+      combo.name,
+      sessions.map(s => ({ date: formatDateBR(s.dateStr), time: s.time, serviceName: s.service.name })),
+      formatPrice(combo.price),
+      cancelUrl
+    ), '_blank')
+  }
 
   async function handleSaveManual() {
-    if (!manualSelectedService || !manualForm.clientName.trim() || !manualForm.date || !manualForm.time) {
-      alert('Preencha o serviço, nome da cliente, data e horário.')
+    const clientName = manualForm.clientName.trim()
+    if (manualSessionServices.length === 0 || !clientName) {
+      alert('Preencha o serviço (ou combo) e o nome da cliente.')
+      return
+    }
+    if (manualSessionServices.some(s => !s)) {
+      alert('Um dos serviços deste combo não foi encontrado. Verifique o combo na tela de Serviços.')
+      return
+    }
+    if (firstEmptyManualIdx !== -1) {
+      alert(manualCombo
+        ? `Escolha a data e o horário da Sessão ${firstEmptyManualIdx + 1}.`
+        : 'Escolha a data e o horário.')
       return
     }
     const digits = rawPhone(manualForm.clientPhone)
@@ -184,54 +376,27 @@ export default function AdminAgendaPage() {
       alert('Informe um telefone celular válido.')
       return
     }
-    if (manualForm.outsideHours && hasAppointmentConflict(manualForm.date, manualForm.time, manualSelectedService.duration_minutes, appointments)) {
-      alert('Já existe um agendamento que ocupa esse horário. Escolha outro horário.')
+    const conflictIdx = manualForm.sessions.findIndex((s, idx) =>
+      s.outsideHours && hasAppointmentConflict(s.date!, s.time!, manualSessionServices[idx]!.duration_minutes, appointments)
+    )
+    if (conflictIdx !== -1) {
+      alert(manualCombo
+        ? `Já existe um agendamento que ocupa o horário da Sessão ${conflictIdx + 1}. Escolha outro horário.`
+        : 'Já existe um agendamento que ocupa esse horário. Escolha outro horário.')
       return
     }
 
     setSavingManual(true)
     try {
-      const dateStr = format(manualForm.date, 'yyyy-MM-dd')
-      const { data: appt, error } = await supabase
-        .from('appointments')
-        .insert({
-          service_id: manualSelectedService.id,
-          client_name: manualForm.clientName.trim(),
-          client_phone: digits,
-          appointment_date: dateStr,
-          appointment_time: manualForm.time + ':00',
-          status: 'confirmed',
-          price: manualSelectedService.price,
-          avisado_whatsapp: false,
-        })
-        .select('*, service:services(*)')
-        .single()
+      if (manualCombo) {
+        await saveManualCombo(manualCombo, clientName, digits)
+      } else {
+        await saveManualService(manualService!, clientName, digits)
+      }
 
-      if (error || !appt) throw error || new Error('Não foi possível salvar o agendamento.')
-
-      syncAppointmentToCalendar({
-        appointmentId: appt.id,
-        clientName: manualForm.clientName.trim(),
-        clientPhone: manualForm.clientPhone,
-        serviceName: manualSelectedService.name,
-        date: dateStr,
-        time: manualForm.time,
-        durationMinutes: manualSelectedService.duration_minutes,
-        notes: 'Migrado de outro sistema de agendamento',
-      })
-
-      const cancelUrl = `${window.location.origin}/cancelar/${appt.cancel_token}`
-      const waUrl = buildWhatsAppUrl(
-        manualForm.clientName.trim(),
-        manualSelectedService.name,
-        formatDateBR(dateStr),
-        manualForm.time,
-        `A partir de ${formatPrice(manualSelectedService.price)}`,
-        cancelUrl
-      )
-      window.open(waUrl, '_blank')
-
-      setToast('Agendamento criado, sincronizado com a agenda e mensagem aberta no WhatsApp!')
+      setToast(manualCombo
+        ? 'Combo criado (4 sessões), sincronizado com a agenda e mensagem aberta no WhatsApp!'
+        : 'Agendamento criado, sincronizado com a agenda e mensagem aberta no WhatsApp!')
       setManualModalOpen(false)
       setManualForm(EMPTY_MANUAL_FORM)
       loadAppointments()
@@ -392,7 +557,7 @@ export default function AdminAgendaPage() {
                     {appt.client_phone.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')}
                   </a>
                 </div>
-                <div>✂️ {isCombo ? appt.combo_name : appt.service?.name}</div>
+                <div>✂️ {appt.service?.name ?? appt.combo_name}</div>
                 <div>📅 {formatDateBR(appt.appointment_date)} às {appt.appointment_time.slice(0, 5)}</div>
                 <div>💰 A partir de {formatPrice(price)}</div>
                 {appt.avisado_whatsapp && (
@@ -492,16 +657,25 @@ export default function AdminAgendaPage() {
           </p>
 
           <div className="field">
-            <label className="label">Serviço *</label>
+            <label className="label">Serviço ou combo *</label>
             <select
               className="input"
-              value={manualForm.serviceId}
-              onChange={e => setManualForm(f => ({ ...f, serviceId: e.target.value, date: null, time: null }))}
+              value={manualForm.itemKey}
+              onChange={e => selectManualItem(e.target.value)}
             >
               <option value="">Selecione...</option>
-              {services.map(s => (
-                <option key={s.id} value={s.id}>{s.name} ({s.duration_minutes} min · {formatPrice(s.price)})</option>
-              ))}
+              {combos.length > 0 && (
+                <optgroup label="Combos (4 sessões)">
+                  {combos.map(c => (
+                    <option key={c.id} value={COMBO_PREFIX + c.id}>{c.name} (4 sessões · {formatPrice(c.price)})</option>
+                  ))}
+                </optgroup>
+              )}
+              <optgroup label="Serviços avulsos">
+                {services.map(s => (
+                  <option key={s.id} value={s.id}>{s.name} ({s.duration_minutes} min · {formatPrice(s.price)})</option>
+                ))}
+              </optgroup>
             </select>
           </div>
 
@@ -526,40 +700,83 @@ export default function AdminAgendaPage() {
             />
           </div>
 
-          {manualSelectedService && (
+          {manualCombo && (
+            <div className="field">
+              <label className="label">Sessões do combo *</label>
+              <p style={{ fontSize: '0.85rem', color: 'var(--color-muted)', marginBottom: '0.5rem' }}>
+                Escolha a data e o horário de cada sessão, em ordem. Total do combo: {formatPrice(manualCombo.price)}.
+              </p>
+              <div className="session-tabs">
+                {manualForm.sessions.map((s, idx) => {
+                  const isFilled = Boolean(s.date && s.time)
+                  const locked = idx > lastUnlockedManualIdx
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      className={`session-tab${activeIdx === idx ? ' session-tab--active' : ''}${isFilled ? ' session-tab--filled' : ''}${locked ? ' session-tab--locked' : ''}`}
+                      onClick={() => !locked && setManualForm(f => ({ ...f, activeSession: idx }))}
+                      disabled={locked}
+                    >
+                      {locked ? '🔒 ' : ''}Sessão {idx + 1} · {manualSessionServices[idx]?.name ?? '—'}
+                      {isFilled ? ` ✓ (${formatDateBR(format(s.date!, 'yyyy-MM-dd'))} ${s.time})` : ''}
+                    </button>
+                  )
+                })}
+              </div>
+              {activeManualService && (
+                <p style={{ fontSize: '0.85rem', color: 'var(--color-muted)', marginTop: '0.5rem' }}>
+                  Agendando a <strong>Sessão {activeIdx + 1}</strong>: {activeManualService.name} ({activeManualService.duration_minutes} min)
+                </p>
+              )}
+              {manualSessionMinDate && (
+                <p style={{ fontSize: '0.82rem', color: 'var(--color-muted)', marginTop: '0.25rem' }}>
+                  Esta sessão só pode ser marcada a partir de {formatDateBR(format(manualSessionMinDate, 'yyyy-MM-dd'))} (mínimo de {MIN_SESSION_GAP_DAYS} dias úteis após a sessão anterior).
+                </p>
+              )}
+              {manualComboMaxDate && (
+                <p style={{ fontSize: '0.82rem', color: 'var(--color-muted)', marginTop: '0.25rem' }}>
+                  As 4 sessões precisam ser marcadas até {formatDateBR(format(manualComboMaxDate, 'yyyy-MM-dd'))} ({COMBO_WINDOW_DAYS} dias após a Sessão 1).
+                </p>
+              )}
+            </div>
+          )}
+
+          {activeManualService && (
             <div className="field">
               <label className="label">Data *</label>
               <Calendar
-                key={manualForm.serviceId}
-                selected={manualForm.date}
-                onSelect={d => setManualForm(f => ({ ...f, date: d, time: null }))}
+                key={`${manualForm.itemKey}-${activeIdx}`}
+                selected={activeManualSession.date}
+                onSelect={d => updateActiveSession({ date: d, time: null })}
                 workingHours={workingHours}
                 blockedSlots={blockedSlots}
                 minDate={manualMinDate}
+                maxDate={manualComboMaxDate}
               />
             </div>
           )}
 
-          {manualForm.date && manualSelectedService && (
+          {activeManualSession.date && activeManualService && (
             <div className="field">
               <label className="label">Horário *</label>
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', marginBottom: '0.75rem', cursor: 'pointer' }}>
                 <input
                   type="checkbox"
-                  checked={manualForm.outsideHours}
-                  onChange={e => setManualForm(f => ({ ...f, outsideHours: e.target.checked, time: null }))}
+                  checked={activeManualSession.outsideHours}
+                  onChange={e => updateActiveSession({ outsideHours: e.target.checked, time: null })}
                 />
                 Encaixe fora do expediente (escolher qualquer horário)
               </label>
-              {manualForm.outsideHours ? (
+              {activeManualSession.outsideHours ? (
                 <>
                   <input
                     className="input"
                     type="time"
-                    value={manualForm.time ?? ''}
-                    onChange={e => setManualForm(f => ({ ...f, time: e.target.value || null }))}
+                    value={activeManualSession.time ?? ''}
+                    onChange={e => updateActiveSession({ time: e.target.value || null })}
                   />
-                  {manualForm.time && hasAppointmentConflict(manualForm.date, manualForm.time, manualSelectedService.duration_minutes, appointments) && (
+                  {activeManualSession.time && hasAppointmentConflict(activeManualSession.date, activeManualSession.time, activeManualService.duration_minutes, appointments) && (
                     <p style={{ color: '#8B0000', fontStyle: 'italic', fontSize: '0.9rem', marginTop: '0.5rem' }}>
                       Esse horário conflita com outro agendamento.
                     </p>
@@ -574,8 +791,8 @@ export default function AdminAgendaPage() {
                   {manualSlots.map(slot => (
                     <div
                       key={slot}
-                      className={`slot${manualForm.time === slot ? ' slot--selected' : ''}`}
-                      onClick={() => setManualForm(f => ({ ...f, time: slot }))}
+                      className={`slot${activeManualSession.time === slot ? ' slot--selected' : ''}`}
+                      onClick={() => updateActiveSession({ time: slot }, Boolean(manualCombo))}
                     >
                       {slot}
                     </div>
@@ -588,7 +805,11 @@ export default function AdminAgendaPage() {
           <div className="modal__actions">
             <button className="btn btn--ghost" onClick={() => setManualModalOpen(false)}>Cancelar</button>
             <button className="btn btn--filled" onClick={handleSaveManual} disabled={savingManual}>
-              {savingManual ? 'Salvando...' : 'Salvar agendamento'}
+              {savingManual
+                ? 'Salvando...'
+                : manualCombo
+                  ? (filledManualSessions < 4 ? `Preencha as 4 sessões (${filledManualSessions}/4)` : 'Salvar combo')
+                  : 'Salvar agendamento'}
             </button>
           </div>
         </Modal>
@@ -597,7 +818,7 @@ export default function AdminAgendaPage() {
       {reschedulingAppt && (
         <Modal title="Reagendar" onClose={() => setReschedulingAppt(null)}>
           <p style={{ fontSize: '0.85rem', color: 'var(--color-muted)', marginBottom: '1rem' }}>
-            {reschedulingAppt.client_name} — {reschedulingAppt.combo_group_id ? reschedulingAppt.combo_name : reschedulingAppt.service?.name}
+            {reschedulingAppt.client_name} — {reschedulingAppt.service?.name ?? reschedulingAppt.combo_name}
             <br />
             Data atual: {formatDateBR(reschedulingAppt.appointment_date)} às {reschedulingAppt.appointment_time.slice(0, 5)}
           </p>

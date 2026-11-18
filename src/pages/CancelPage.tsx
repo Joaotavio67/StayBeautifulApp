@@ -120,7 +120,7 @@ export default function CancelPage() {
                 )}
 
                 {[
-                  { label: isCombo ? 'Pacote / Serviço' : 'Serviço', value: isCombo ? appt.combo_name : appt.service?.name },
+                  { label: isCombo ? 'Serviço desta sessão' : 'Serviço', value: appt.service?.name ?? appt.combo_name },
                   { label: 'Data', value: formatDateBR(appt.appointment_date) },
                   { label: 'Horário', value: appt.appointment_time.slice(0, 5) },
                   { label: 'Valor', value: formatPrice(appt.price ?? appt.service?.price ?? 0) },

@@ -202,7 +202,7 @@ export default function AdminHistoryPage() {
                     {appt.client_phone.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')}
                   </a>
                 </div>
-                <div>✂️ {isCombo ? appt.combo_name : appt.service?.name}</div>
+                <div>✂️ {appt.service?.name ?? appt.combo_name}</div>
                 <div>
                   📅 {formatDateBR(appt.appointment_date)} às {appt.appointment_time.slice(0, 5)}
                 </div>

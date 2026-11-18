@@ -1,4 +1,4 @@
-const supabaseUrl = 'https://uobbgzlcryhqwkrrnxu.supabase.co';
+const supabaseUrl = 'https://uobbgzlcryyhqwkrrnxu.supabase.co';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 async function deleteAppointment() {

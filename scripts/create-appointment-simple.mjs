@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { randomUUID } from 'crypto';
 
 // Use environment variables directly
-const supabaseUrl = 'https://uobbgzlcryhqwkrrnxu.supabase.co';
+const supabaseUrl = 'https://uobbgzlcryyhqwkrrnxu.supabase.co';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
